@@ -22,9 +22,9 @@ a graph comparing the reward per episode against random play.
 | Model | Env             |      Score      |
 |-------|-----------------|:---------------:|
 | DQN | CartPole-v1     |  500            |
-| DQN | CartPoleSwingUp\* |  700            |
+| DQN | CartPoleSwingUp\* |  872 +/- 3          |
 
-\**Note: Training on CartPoleSwingUp is very unstable, even when training for millions of frames and with a large (100000) capacity memory. 
+\**Note: While we can train high-performing models on CartPoleSwingUp, these are very unstable, even when training for millions of frames and with a large (100000) capacity memory. 
 It is not clear why this is the case.*
 
 **Conv model**
