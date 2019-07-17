@@ -1,3 +1,8 @@
+"""
+Replay memory, adapted from
+https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+"""
+
 from collections import namedtuple
 import random
 

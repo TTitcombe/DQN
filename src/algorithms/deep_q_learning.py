@@ -9,7 +9,23 @@ from src.utils.replay_memory import Transition
 
 
 class DQNAgent:
+    """
+    This class implements a basic deep-q-learning algorithm
+    """
     def __init__(self, model, target_model, env, memory, logger, *epsilon_args, **epsilon_kwargs):
+        """
+        :param model: The model which decides actions and is trained
+        :param target_model: The model used in calculating the loss function. is updated to match model every C steps
+        :param env: An OpenAI gym environment
+        :param memory: A store for the agent's memories
+        :type memory: utils.replay_memory.ReplayMemory
+        :param logger: An object which stores episode rewards and losses, and can generate charts
+        :type logger: utils.logger.Logger
+        :param epsilon_args: args to construct our epsilon-greedy policy:
+                                    anneal method and number of frames over which to anneal
+        :param epsilon_kwargs: kwargs to construct our epsilon-greedy policy:
+                                    maximum and minimum values for epsilon
+        """
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = model

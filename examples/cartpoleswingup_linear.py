@@ -1,3 +1,5 @@
+"""A basic example showing how to train a DQNAgent to play CartPoleSwingUp"""
+
 from CartPoleSwingUp import CartPoleSwingUpEnv
 import numpy as np
 import os
@@ -5,6 +7,7 @@ import torch
 
 from src.algorithms.deep_q_learning import DQNAgent
 from src.models.dqn_linear import DQNLinear
+from src.utils.assessment import AgentEvaluation
 from src.utils.logger import Logger
 from src.utils.replay_memory import ReplayMemory
 
@@ -31,10 +34,20 @@ memory = ReplayMemory(CAPACITY)
 
 name = ("CartPoleSwingUp" + "_{}capacity".format(CAPACITY) +
         "_{}{}EPSILON".format(EPSILON_FRAMES, EPSILON_METHOD) + "_{}C".format(C))
+save_path = os.path.join("results", "models", name)
 
-logger = Logger(save_path=os.path.join("results", "models", name), save_best=True,
+logger = Logger(save_path, save_best=True,
                 save_every=np.inf, C=C, capacity=CAPACITY, frames=frames, anneal=EPSILON_FRAMES)
 
 # ------Training------------
 agent = DQNAgent(model, target_model, env, memory, logger, *EPSILON_ARGS)
 agent.train(n_frames=frames, C=C, render=False)
+# This saves a model to results/models/CartPoleSwingUp.....
+
+# ------Evaluating----------
+evaluator = AgentEvaluation(model, save_path, device)
+# Play once
+evaluator.play(1, env)
+# Get average score
+scores = evaluator.play(100, env, render=False)
+print("{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores))))
