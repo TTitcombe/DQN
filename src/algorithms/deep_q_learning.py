@@ -1,15 +1,11 @@
-from CartPoleSwingUp import CartPoleSwingUpEnv
 import numpy as np
-import os
 import random
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from src.models.dqn_linear import DQNLinear
 from src.utils.epsilon_greedy import Epsilon
-from src.utils.logger import Logger
-from src.utils.replay_memory import ReplayMemory, Transition
+from src.utils.replay_memory import Transition
 
 
 class DQNAgent:
@@ -197,65 +193,3 @@ class DQNAgent:
 
     def _update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
-
-
-CAPACITY = 10000
-SKIP_N = 4
-
-EPSILON_METHOD = "linear"
-EPSILON_FRAMES = 10000
-EPSILON_ARGS = [EPSILON_METHOD, EPSILON_FRAMES]
-C = 1000
-frames = 100000
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = DQNLinear(5 * SKIP_N, 2).to(device)
-target_model = DQNLinear(5 * SKIP_N, 2).to(device)
-target_model.load_state_dict(model.state_dict())
-target_model.eval()
-
-env = CartPoleSwingUpEnv()
-memory = ReplayMemory(CAPACITY)
-
-name = ("CartPoleSwingUp" + "_{}capacity".format(CAPACITY) +
-        "_{}{}EPSILON".format(EPSILON_FRAMES, EPSILON_METHOD) + "_{}C".format(C))
-
-logger = Logger(save_path=os.path.join("results", "models", "new", name), save_best=True,
-                save_every=np.inf, C=C, capacity=CAPACITY, frames=frames, anneal=EPSILON_FRAMES)
-
-agent = DQNAgent(model, target_model, env, memory, logger, *EPSILON_ARGS)
-agent.train(n_frames=frames, C=C, render=False)
-
-"""p = os.path.join("results", "models", "CartPoleSwingUp_BIG", "best_model.pth")
-model = torch.load(p)
-model.eval()
-
-env = CartPoleSwingUpEnv()
-state = self._torch_from_frame(env.reset())
-state = torch.cat([state] * 4, dim=1)
-
-is_done = False
-reward = 0.
-skip_n = 4
-
-while not is_done:
-    with torch.no_grad():
-        action = model(state).max(1)[1].view(1, 1)
-
-    game_reward = 0.
-    next_state = None
-    for _ in range(skip_n):
-        if is_done:
-            next_state = None
-            break
-        next_frame, reward, is_done, _ = env.step(action.item())
-        game_reward += reward
-        env.render()
-        next_frame = self._torch_from_frame(next_frame)
-        next_state = next_frame if next_state is None else torch.cat((next_state, next_frame), dim=1)
-
-    reward = np.sign(game_reward)
-    reward = torch.tensor([[reward]], device=device)
-
-    state = next_state"""
-
