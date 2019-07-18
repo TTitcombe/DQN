@@ -25,7 +25,7 @@ class Epsilon:
         return self.epsilon_min + (self.epsilon_max - self.epsilon_min) * np.exp(-1 * frame / self.n_frames)
 
     def plot_epsilon(self):
-        x = range(int(1.1 * self.n_frames))
+        x = np.linspace(self.epsilon_min, self.epsilon_max, self.n_frames)
         y = [self(_x) for _x in x]
         plt.plot(x, y)
         plt.xlabel("Frame")

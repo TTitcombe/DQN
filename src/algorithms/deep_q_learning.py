@@ -47,7 +47,7 @@ class DQNAgent:
 
     def train(self, n_frames=10000, C=100, gamma=0.999, batch_size=32, render=True, clip_rewards=True, skip_n=4):
         # Pre-fill memory up to 5% capacity with random play
-        pre_fill_frames = int(self.memory.capacity * 0.05)
+        pre_fill_frames = int(self.memory.capacity * 0.5)
         print("Getting {} random memories...".format(pre_fill_frames))
         self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
 
@@ -94,6 +94,8 @@ class DQNAgent:
         random_rewards = []
         for episode in range(episode_count):
             random_rewards.append(self._play_random_episode(False, clip_rewards, skip_n))
+
+        print("\nBest reward: {}".format(self.logger.best_reward))
 
         self.logger.random_rewards = random_rewards
 
