@@ -1,10 +1,12 @@
 # DQN
+
+![DDQN_CartPoleSwingUp_Example](results/videos/double_dqn_cartpoleswingup.gif)
+
 This is a basic implementation of Deep Q Learning. Currently we have implemented a linear version, i.e. we are taking environment state 
 as input to a linear neural network, rather than using a convolutional network on raw pixels.
 
 Soon, we aim to implement:
 * Convolutional DQN trained on raw pixels for Atari games, as in the original paper
-* DDQN
 * Prioritized Experience Replay
 
 ## To run

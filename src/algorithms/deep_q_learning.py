@@ -5,12 +5,15 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from src.utils.epsilon_greedy import Epsilon
+from src.utils.general_functions import torch_from_frame
 from src.utils.replay_memory import Transition
 
 
 class DQNAgent:
     """
-    This class implements a basic deep-q-learning algorithm
+    This class implements a simplified deep-q-learning algorithm.
+    State information extracted from the environment is used as model input,
+    rather than raw pixels.
     """
     def __init__(self, model, target_model, env, memory, logger, *epsilon_args, **epsilon_kwargs):
         """
@@ -62,7 +65,7 @@ class DQNAgent:
                     render = True
                 else:
                     render = False"""
-                reset_state = self._torch_from_frame(self.env.reset())
+                reset_state = torch_from_frame(self.env.reset(), self.device)
                 state = torch.cat([reset_state] * skip_n, dim=1)
                 if render:
                     self.env.render()
@@ -96,10 +99,6 @@ class DQNAgent:
 
         self.logger.plot_reward(save=True)
 
-    def _torch_from_frame(self, frame):
-        frame = torch.from_numpy(np.ascontiguousarray(frame, dtype=np.float32))
-        return frame.unsqueeze(0).to(self.device)
-
     def _fill_memory_with_random(self, n_frames, render, clip_rewards, skip_n):
         frame = 0
         is_done = True
@@ -109,7 +108,7 @@ class DQNAgent:
             # If episode has finished, start a new one
             if is_done:
                 episode_count += 1
-                reset_state = self._torch_from_frame(self.env.reset())
+                reset_state = torch_from_frame(self.env.reset(), self.device)
                 state = torch.cat([reset_state] * skip_n, dim=1)
                 if render:
                     self.env.render()
@@ -122,7 +121,7 @@ class DQNAgent:
             frame += 1
 
     def _play_random_episode(self, render, clip_rewards, skip_n, update=False):
-        reset_state = self._torch_from_frame(self.env.reset())
+        reset_state = torch_from_frame(self.env.reset(), self.device)
         state = torch.cat([reset_state] * skip_n, dim=1)
         if render:
             self.env.render()
@@ -153,7 +152,7 @@ class DQNAgent:
             if render:
                 self.env.render()
             game_reward += reward
-            next_frame = self._torch_from_frame(next_frame)
+            next_frame = torch_from_frame(next_frame, self.device)
             next_state = next_frame if next_state is None else torch.cat((next_state, next_frame), dim=1)
 
         reward = np.sign(game_reward) if clip_rewards else game_reward
