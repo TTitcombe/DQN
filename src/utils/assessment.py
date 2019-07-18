@@ -1,5 +1,6 @@
-import numpy as np
 import torch
+
+from src.utils.general_functions import torch_from_frame
 
 
 class AgentEvaluation:
@@ -11,17 +12,13 @@ class AgentEvaluation:
         model.eval()
         self.model = model
 
-    def _torch_from_frame(self, frame):
-        frame = torch.from_numpy(np.ascontiguousarray(frame, dtype=np.float32))
-        return frame.unsqueeze(0).to(self.device)
-
     def play(self, n, env, skip_n=4, render=True):
         episodes_played = 0
         rewards = []
         is_done = True
         while episodes_played < n:
             if is_done:
-                state = self._torch_from_frame(env.reset())
+                state = torch_from_frame(env.reset(), self.device)
                 if render:
                     env.render()
                 state = torch.cat([state]*4, dim=1)
@@ -35,7 +32,7 @@ class AgentEvaluation:
                 new_state, reward, is_done, _ = env.step(action.item())
                 if render:
                     env.render()
-                new_state = self._torch_from_frame(new_state)
+                new_state = torch_from_frame(new_state, self.device)
                 episode_reward += reward
                 if is_done:
                     break
@@ -45,5 +42,10 @@ class AgentEvaluation:
             if is_done:
                 rewards.append(episode_reward)
                 episodes_played += 1
-        env.close()
         return rewards
+
+    def record(self, env, path):
+        wrapped_env = torch.wrappers.Monitor(env, path, force=True)
+        self.play(1, wrapped_env, render=False)
+        wrapped_env.close()
+        env.close()

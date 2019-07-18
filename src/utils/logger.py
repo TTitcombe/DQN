@@ -3,16 +3,14 @@ import numpy as np
 import os
 from torch import save as tsave
 
+from .general_functions import create_dir
+
 
 class Logger:
     def __init__(self, save_path="", save_every=100, save_best=False, log_every=50, log_style="block",
                  **training_kwargs):
         self.save_path = save_path
-        path = ""
-        for directory in os.path.split(save_path):
-            path = os.path.join(path, directory)
-            if not os.path.exists(path):
-                os.mkdir(path)
+        create_dir(save_path)
 
         self._save_every = save_every
 
