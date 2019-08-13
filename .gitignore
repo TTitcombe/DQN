@@ -106,3 +106,18 @@ venv.bak/
 
 # Gym environments
 custom_envs/
+
+# Results
+results/
+all_rewards.png
+
+# Testing code
+examples/breakout_test.py
+examples/discrete_test.py
+examples/random_play.py
+
+# Docker copied to this repo for testing, but it's available on GitHub already
+docker/
+
+# Atari isn't ready yet!
+examples/atari_ddqn.py
