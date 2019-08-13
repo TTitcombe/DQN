@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 
-from .deep_q_learning import DQNAgent
+from .deep_q_learning import DQNAgent, DQNAtariAgent
 from src.utils.replay_memory import Transition
 
 
@@ -49,3 +49,13 @@ class DoubleDQNAgent(DQNAgent):
             return loss.item()
         else:
             return 0.
+
+
+class DoubleDQNAtariAgent(DQNAtariAgent, DoubleDQNAgent):
+    """
+    This class is used to perform double deep q learning on an Atari environment
+    (using pixel, not state, information to make decisions).
+    It inherits the atari processing methods from DQNAtariAgent and
+    Double deep q learning methods from DoubleDQNAgent
+    """
+    pass
