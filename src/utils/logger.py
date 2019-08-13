@@ -15,7 +15,7 @@ class Logger:
         self._save_every = save_every
 
         self._save_best = save_best
-        self._best_reward = -np.inf
+        self.best_reward = -np.inf
 
         self._rewards = []
         self._losses = []
@@ -31,6 +31,14 @@ class Logger:
 
         self.training_kwargs = training_kwargs
 
+    def clear(self):
+        self._rewards = []
+        self._losses = []
+        self._block_rewards = []
+        self._block_losses = []
+        self.random_rewards = []
+        self.episode = 0
+
     def update(self, reward, loss, model):
         self.episode += 1
         self._block_rewards.append(reward)
@@ -39,8 +47,8 @@ class Logger:
         if self.episode % self.log_every == 0:
             self.report()
 
-        if self._save_best and reward > self._best_reward:
-            self._best_reward = reward
+        if self._save_best and reward > self.best_reward:
+            self.best_reward = reward
             self.training_kwargs.update({"model_state_dict": model.state_dict()})
             tsave(self.training_kwargs, os.path.join(self.save_path, "best_model.pth"))
 
