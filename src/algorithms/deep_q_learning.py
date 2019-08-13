@@ -1,8 +1,11 @@
+import cv2
 import numpy as np
+from PIL import Image
 import random
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
+import torchvision.transforms as T
 
 from src.utils.epsilon_greedy import Epsilon
 from src.utils.general_functions import torch_from_frame
@@ -45,11 +48,16 @@ class DQNAgent:
 
         self.logger = logger
 
-    def train(self, n_frames=10000, C=100, gamma=0.999, batch_size=32, render=True, clip_rewards=True, skip_n=4):
-        # Pre-fill memory up to 5% capacity with random play
-        pre_fill_frames = int(self.memory.capacity * 0.5)
-        print("Getting {} random memories...".format(pre_fill_frames))
-        self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
+    def train(self, n_frames=10000, C=100, gamma=0.999, batch_size=32, render=True,
+              clip_rewards=True, skip_n=4, pre_fill_memory=True):
+        # TODO This should be refactored out of the agent class
+        # TODO the agent class should only contain the update rules for the algorithm
+        # TODO create a separate training and evaluating class
+        if pre_fill_memory:
+            # Pre-fill memory up to 5% capacity with random play
+            pre_fill_frames = int(n_frames * 0.1)
+            print("Getting {} random memories...".format(pre_fill_frames))
+            self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
 
         print("Starting training...\n")
         frame = 0
@@ -65,8 +73,7 @@ class DQNAgent:
                     render = True
                 else:
                     render = False"""
-                reset_state = torch_from_frame(self.env.reset(), self.device)
-                state = torch.cat([reset_state] * skip_n, dim=1)
+                state = self._get_initial_state(skip_n)
                 if render:
                     self.env.render()
 
@@ -110,8 +117,7 @@ class DQNAgent:
             # If episode has finished, start a new one
             if is_done:
                 episode_count += 1
-                reset_state = torch_from_frame(self.env.reset(), self.device)
-                state = torch.cat([reset_state] * skip_n, dim=1)
+                state = self._get_initial_state(skip_n)
                 if render:
                     self.env.render()
                 is_done = False
@@ -123,8 +129,7 @@ class DQNAgent:
             frame += 1
 
     def _play_random_episode(self, render, clip_rewards, skip_n, update=False):
-        reset_state = torch_from_frame(self.env.reset(), self.device)
-        state = torch.cat([reset_state] * skip_n, dim=1)
+        state = self._get_initial_state(skip_n)
         if render:
             self.env.render()
         is_done = False
@@ -154,7 +159,7 @@ class DQNAgent:
             if render:
                 self.env.render()
             game_reward += reward
-            next_frame = torch_from_frame(next_frame, self.device)
+            next_frame = self._get_state_from_frame(next_frame)
             next_state = next_frame if next_state is None else torch.cat((next_state, next_frame), dim=1)
 
         reward = np.sign(game_reward) if clip_rewards else game_reward
@@ -175,6 +180,14 @@ class DQNAgent:
                 # found, so we pick action with the larger expected reward.
                 action = self.model(state).max(1)[1].view(1, 1)
         return action
+
+    def _get_initial_state(self, skip_n):
+        reset_frame = self.env.reset()
+        reset_state = self._get_state_from_frame(reset_frame)
+        return torch.cat([reset_state] * skip_n, dim=1)
+
+    def _get_state_from_frame(self, frame):
+        return torch_from_frame(frame, self.device)
 
     def _update_model(self, gamma, batch_size):
         if len(self.memory) > batch_size:
@@ -210,3 +223,35 @@ class DQNAgent:
 
     def _update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
+
+
+class DQNAtariAgent(DQNAgent):
+    def _get_initial_state(self, skip_n):
+        # This functionality should be refactored out of the agent. Use gym wrappers instead
+        self.env.reset()
+
+        random_state = self._get_state_from_frame(None)
+        return torch.cat([random_state] * skip_n, dim=1)
+
+    def _get_state_from_frame(self, _):
+        # Get the frame
+        frame = self.env.render(mode='rgb_array')
+
+        # Resize
+        frame = cv2.resize(frame, (84, 84))
+
+        # Transpose it to channels x height x width
+        frame = frame.transpose((2, 0, 1))
+
+        # Convert to greyscale
+        # Taken from https://github.com/ttaoREtw/Flappy-Bird-Double-DQN-Pytorch/blob/master/env.py
+        luma = [0.2989, 0.5870, 0.1140]
+        frame = (luma[0] * frame[0, :, :] +
+                 luma[1] * frame[1, :, :] +
+                 luma[2] * frame[2, :, :])
+
+        # Scale
+        frame = frame.astype('float32') / 255.0
+
+        # Convert to torch tensor and add a batch dimension
+        return torch.from_numpy(frame).unsqueeze(0).unsqueeze(0).to(self.device)
