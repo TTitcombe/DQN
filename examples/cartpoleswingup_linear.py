@@ -1,13 +1,13 @@
 """A basic example showing how to train a DoubleDQNAgent to play CartPoleSwingUp"""
+import os
 
 from cartpoleswingup import CartPoleSwingUpEnv
-import numpy as np
-import os
-import torch
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
 
 from src.algorithms.double_deep_q_learning import DoubleDQNAgent
-from src.models.dqn_linear import DQNLinear
+from src.models import DQNLinear
 from src.utils.assessment import AgentEvaluation
 from src.utils.logger import Logger
 from src.utils.replay_memory import ReplayMemory
