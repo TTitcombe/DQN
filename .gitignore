@@ -108,8 +108,11 @@ venv.bak/
 custom_envs/
 
 # Results
-results/
-all_rewards.png
+results/models/*
+!results/models/CartpoleSwingUp_DQN_linear.pth
+results/videos/*
+!results/videos/*.gif
+results/videos/carracing_episode_75.gif
 
 # Testing code
 examples/breakout_test.py
