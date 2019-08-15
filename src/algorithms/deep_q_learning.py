@@ -1,15 +1,13 @@
-import cv2
 import numpy as np
-from PIL import Image
 import random
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-import torchvision.transforms as T
+from tqdm import tqdm
 
 from src.utils.epsilon_greedy import Epsilon
 from src.utils.general_functions import torch_from_frame
-from src.utils.replay_memory import Transition
+from src.utils.replay_memory import Transition, ReplayMemory
 
 
 class DQNAgent:
@@ -48,72 +46,108 @@ class DQNAgent:
 
         self.logger = logger
 
+    def load_model(self, path):
+        checkpoint = torch.load(path)
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.target_model.load_state_dict(self.model.state_dict())
+
+    def fill_memory(self, skip_n=4, clip_rewards=True):
+        frame = 0
+        is_done = True
+        while frame < self.memory.capacity:
+            if frame % 100 == 0:
+                print(frame)
+            # If episode has finished, start a new one
+            if is_done:
+                state = self._get_initial_state(skip_n)
+                is_done = False
+
+            action, reward, is_done, next_state = self._act(state, 1e7, is_done, False,
+                                                            clip_rewards, skip_n)
+            self.memory.update(state, action, reward, next_state)
+            state = next_state
+            frame += 1
+
     def train(self, n_frames=10000, C=100, gamma=0.999, batch_size=32, render=True,
-              clip_rewards=True, skip_n=4, pre_fill_memory=True):
+              clip_rewards=True, skip_n=4, pre_fill_memory=True, starting_frame=0, frames_before_train=0):
         # TODO This should be refactored out of the agent class
         # TODO the agent class should only contain the update rules for the algorithm
         # TODO create a separate training and evaluating class
         if pre_fill_memory:
-            # Pre-fill memory up to 5% capacity with random play
-            pre_fill_frames = int(n_frames * 0.1)
+            # Pre-fill memory up to 10% capacity with random play
+            pre_fill_frames = min(self.memory.capacity, int(n_frames * 0.1))
             print("Getting {} random memories...".format(pre_fill_frames))
             self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
 
         print("Starting training...\n")
-        frame = 0
+        frame = starting_frame
+        n_frames = n_frames + starting_frame
         is_done = True
         episode_count = 0
 
-        while frame < n_frames or not is_done:
+        try:
+            while frame < n_frames or not is_done:
 
-            # If episode has finished, start a new one
-            if is_done:
-                episode_count += 1
-                """if episode_count % 250 == 0:
-                    render = True
+                # If episode has finished, start a new one
+                if is_done:
+                    episode_count += 1
+                    state = self._get_initial_state(skip_n)
+                    if render:
+                        self.env.render()
+
+                    episode_reward = 0.
+                    episode_loss = 0.
+                    is_done = False
+
+                action, reward, is_done, next_state = self._act(state, frame, is_done, render,
+                                                                clip_rewards, skip_n)
+                self.memory.update(state, action, reward, next_state)
+                state = next_state
+
+                # Update
+                if frame > (frames_before_train-1):
+                    loss = self._update_model(gamma, batch_size)
+
+                    if frame % C == 0:
+                        self._update_target_model()
                 else:
-                    render = False"""
-                state = self._get_initial_state(skip_n)
-                if render:
-                    self.env.render()
+                    loss = 0.
 
-                episode_reward = 0.
-                episode_loss = 0.
-                is_done = False
+                episode_loss += loss
+                episode_reward += reward
+                frame += 1
 
-            action, reward, is_done, next_state, game_reward = self._act(state, frame, is_done, render,
-                                                                         clip_rewards, skip_n)
-            self.memory.update(state, action, reward, next_state)
-            state = next_state
+                if is_done:
+                    self.logger.update(episode_reward, episode_loss, self.model)
+        except KeyboardInterrupt:
+            # Save the current data so we can produce a full chart
+            # if we restart training later
+            self.logger.report()
+            self.logger.save_data()
+            self.logger.save_model(self.model, "episode_{}_training_interrupted".format(episode_count))
+        else:
+            random_rewards = []
+            for episode in range(episode_count):
+                random_rewards.append(self._play_random_episode(False, clip_rewards, skip_n))
 
-            # Update
-            loss = self._update_model(gamma, batch_size)
-            episode_loss += loss
-            episode_reward += game_reward
-            frame += 1
+            print("\nBest reward: {}".format(self.logger.best_reward))
 
-            if frame % C == 0:
-                self._update_target_model()
+            self.logger.random_rewards = random_rewards
 
-            if is_done:
-                self.logger.update(episode_reward, episode_loss, self.model)
+            self.logger.plot_reward(save=True)
 
-        random_rewards = []
-        for episode in range(episode_count):
-            random_rewards.append(self._play_random_episode(False, clip_rewards, skip_n))
-
-        print("\nBest reward: {}".format(self.logger.best_reward))
-
-        self.logger.random_rewards = random_rewards
-
-        self.logger.plot_reward(save=True)
+        # Clean-up
+        self.env.close()
 
     def _fill_memory_with_random(self, n_frames, render, clip_rewards, skip_n):
         frame = 0
         is_done = True
         episode_count = 0
 
-        while frame < n_frames or not is_done:
+        pbar = tqdm(total=10)
+        while frame < n_frames:
+            if (frame + 1) % (n_frames // 10) == 0 and frame > 0:
+                pbar.update(1)
             # If episode has finished, start a new one
             if is_done:
                 episode_count += 1
@@ -122,11 +156,12 @@ class DQNAgent:
                     self.env.render()
                 is_done = False
 
-            action, reward, is_done, next_state, game_reward = self._act(state, 0, is_done, render,
-                                                                         clip_rewards, skip_n)
+            action, reward, is_done, next_state = self._act(state, 0, is_done, render,
+                                                            clip_rewards, skip_n)
             self.memory.update(state, action, reward, next_state)
             state = next_state
             frame += 1
+        pbar.close()
 
     def _play_random_episode(self, render, clip_rewards, skip_n, update=False):
         state = self._get_initial_state(skip_n)
@@ -136,22 +171,25 @@ class DQNAgent:
         episode_reward = 0.
 
         while not is_done:
-            action, reward, is_done, next_state, game_reward = self._act(state, 0, False, render, clip_rewards, skip_n)
+            action, reward, is_done, next_state = self._act(state, 0, False, render, clip_rewards, skip_n)
 
             if update:
                 self.memory.update(state, action, reward, next_state)
 
             state = next_state
-            episode_reward += game_reward
+            episode_reward += reward
         return episode_reward
 
     def _act(self, state, frame, is_done, render, clip_rewards, skip_n):
         # Select an action
-        action = self._select_action(state, self.epsilon(frame))
+        action = self._select_action(self._get_state_from_frame(state), self.epsilon(frame))
 
-        next_state = None
-        game_reward = 0.
-        for _ in range(skip_n):
+        next_state, reward, is_done, _ = self.env.step(action.item())
+        if render:
+            self.env.render()
+        if is_done:
+            next_state = None
+        """for _ in range(skip_n):
             if is_done:
                 next_state = None
                 break
@@ -160,12 +198,11 @@ class DQNAgent:
                 self.env.render()
             game_reward += reward
             next_frame = self._get_state_from_frame(next_frame)
-            next_state = next_frame if next_state is None else torch.cat((next_state, next_frame), dim=1)
+            next_state = next_frame if next_state is None else torch.cat((next_state, next_frame), dim=1)"""
 
-        reward = np.sign(game_reward) if clip_rewards else game_reward
         reward = torch.tensor([[reward]], device=self.device)
 
-        return action, reward, is_done, next_state, game_reward
+        return action, reward, is_done, next_state
 
     def _select_action(self, state, epsilon):
         if random.random() < epsilon:
@@ -175,9 +212,6 @@ class DQNAgent:
         else:
             # Select model's best action
             with torch.no_grad():
-                # t.max(1) will return largest column value of each row.
-                # second column on max result is index of where max element was
-                # found, so we pick action with the larger expected reward.
                 action = self.model(state).max(1)[1].view(1, 1)
         return action
 
@@ -197,10 +231,9 @@ class DQNAgent:
             # Get y
             rewards = torch.cat(samples.reward)
             non_terminal_indices = torch.tensor(tuple(map(lambda s: s is not None, samples.next_state)),
-                                                device=self.device, dtype=torch.uint8)
+                                                device=self.device, dtype=torch.bool)
             next_states = torch.cat([ns for ns in samples.next_state if ns is not None])
             max_q = self.target_model(next_states).max(1)[0].detach()
-            # print(max_q.shape)
             additional_qs = torch.zeros(batch_size, device=self.device)
             additional_qs[non_terminal_indices] = max_q
             y = rewards + additional_qs.unsqueeze(1) * gamma
@@ -227,31 +260,19 @@ class DQNAgent:
 
 class DQNAtariAgent(DQNAgent):
     def _get_initial_state(self, skip_n):
-        # This functionality should be refactored out of the agent. Use gym wrappers instead
-        self.env.reset()
+        return self.env.reset()
 
-        random_state = self._get_state_from_frame(None)
-        return torch.cat([random_state] * skip_n, dim=1)
+    def _get_state_from_frame(self, frame):
+        if frame is None:
+            return frame
 
-    def _get_state_from_frame(self, _):
-        # Get the frame
-        frame = self.env.render(mode='rgb_array')
+        state = np.array(frame)
 
-        # Resize
-        frame = cv2.resize(frame, (84, 84))
-
-        # Transpose it to channels x height x width
-        frame = frame.transpose((2, 0, 1))
-
-        # Convert to greyscale
-        # Taken from https://github.com/ttaoREtw/Flappy-Bird-Double-DQN-Pytorch/blob/master/env.py
-        luma = [0.2989, 0.5870, 0.1140]
-        frame = (luma[0] * frame[0, :, :] +
-                 luma[1] * frame[1, :, :] +
-                 luma[2] * frame[2, :, :])
+        # Make it channels x height x width
+        state = state.transpose((2, 0, 1))
 
         # Scale
-        frame = frame.astype('float32') / 255.0
+        state = state.astype('float32') / 255.0
 
-        # Convert to torch tensor and add a batch dimension
-        return torch.from_numpy(frame).unsqueeze(0).unsqueeze(0).to(self.device)
+        # To torch
+        return torch.from_numpy(state).unsqueeze(0).to(self.device)

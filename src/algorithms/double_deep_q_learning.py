@@ -23,8 +23,8 @@ class DoubleDQNAgent(DQNAgent):
             # Get y
             rewards = torch.cat(samples.reward)
             non_terminal_indices = torch.tensor(tuple(map(lambda s: s is not None, samples.next_state)),
-                                                device=self.device, dtype=torch.uint8)
-            next_states = torch.cat([ns for ns in samples.next_state if ns is not None])
+                                                device=self.device, dtype=torch.bool)
+            next_states = torch.cat([self._get_state_from_frame(ns) for ns in samples.next_state if ns is not None])
 
             # In Double Deep Q Learning, we use the Q value attached to the best value from the model
             selected_actions = self.model(next_states).max(1)[1].detach().unsqueeze(1)
@@ -36,7 +36,8 @@ class DoubleDQNAgent(DQNAgent):
 
             # get Q for each action we took in states
             actions = torch.cat(samples.action)
-            q = self.model(torch.cat(samples.state)).gather(1, actions)
+            states = torch.cat([self._get_state_from_frame(state) for state in samples.state])
+            q = self.model(states).gather(1, actions)
 
             # Update the model
             loss = F.mse_loss(y, q)
