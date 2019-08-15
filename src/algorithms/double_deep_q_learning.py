@@ -15,6 +15,7 @@ class DoubleDQNAgent(DQNAgent):
     calculated by taking the best action as predicted by the model; normal DQN takes the
     greatest Q value calculated by the target network.
     """
+
     def _update_model(self, gamma, batch_size):
         if len(self.memory) > batch_size:
             samples = self.memory.sample(batch_size)
@@ -22,13 +23,24 @@ class DoubleDQNAgent(DQNAgent):
 
             # Get y
             rewards = torch.cat(samples.reward)
-            non_terminal_indices = torch.tensor(tuple(map(lambda s: s is not None, samples.next_state)),
-                                                device=self.device, dtype=torch.bool)
-            next_states = torch.cat([self._get_state_from_frame(ns) for ns in samples.next_state if ns is not None])
+            non_terminal_indices = torch.tensor(
+                tuple(map(lambda s: s is not None, samples.next_state)),
+                device=self.device,
+                dtype=torch.bool,
+            )
+            next_states = torch.cat(
+                [
+                    self._get_state_from_frame(ns)
+                    for ns in samples.next_state
+                    if ns is not None
+                ]
+            )
 
             # In Double Deep Q Learning, we use the Q value attached to the best value from the model
             selected_actions = self.model(next_states).max(1)[1].detach().unsqueeze(1)
-            max_q = self.target_model(next_states).gather(1, selected_actions).squeeze(1)
+            max_q = (
+                self.target_model(next_states).gather(1, selected_actions).squeeze(1)
+            )
 
             additional_qs = torch.zeros(batch_size, device=self.device)
             additional_qs[non_terminal_indices] = max_q
@@ -36,7 +48,9 @@ class DoubleDQNAgent(DQNAgent):
 
             # get Q for each action we took in states
             actions = torch.cat(samples.action)
-            states = torch.cat([self._get_state_from_frame(state) for state in samples.state])
+            states = torch.cat(
+                [self._get_state_from_frame(state) for state in samples.state]
+            )
             q = self.model(states).gather(1, actions)
 
             # Update the model
@@ -49,7 +63,7 @@ class DoubleDQNAgent(DQNAgent):
             self.optimizer.step()
             return loss.item()
         else:
-            return 0.
+            return 0.0
 
 
 class DoubleDQNAtariAgent(DQNAtariAgent, DoubleDQNAgent):
@@ -59,4 +73,5 @@ class DoubleDQNAtariAgent(DQNAtariAgent, DoubleDQNAgent):
     It inherits the atari processing methods from DQNAtariAgent and
     Double deep q learning methods from DoubleDQNAgent
     """
+
     pass

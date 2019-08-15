@@ -8,6 +8,7 @@ class DQNLinear(nn.Module):
     There is nothing about this architecture which is specific to Deep-q-learning - in fact,
     the algorithm's performance should be fairly robust to the number and sizes of layers.
     """
+
     def __init__(self, num_inputs, num_actions):
         """
         :param num_inputs: Number of inputs in the openai gym env's state

@@ -8,8 +8,15 @@ from .general_functions import create_dir
 
 
 class Logger:
-    def __init__(self, save_path="", save_every=100, save_best=False, log_every=50, log_style="block",
-                 **training_kwargs):
+    def __init__(
+        self,
+        save_path="",
+        save_every=100,
+        save_best=False,
+        log_every=50,
+        log_style="block",
+        **training_kwargs
+    ):
         self.save_path = save_path
         create_dir(save_path)
 
@@ -112,7 +119,11 @@ class Logger:
 
     def plot_reward_continuous(self, show=False, save=False):
         if self.random_rewards:
-            plt.plot(range(len(self.random_rewards)), np.cumsum(self.random_rewards), label="Random actions")
+            plt.plot(
+                range(len(self.random_rewards)),
+                np.cumsum(self.random_rewards),
+                label="Random actions",
+            )
         plt.plot(range(len(self._rewards)), np.cumsum(self._rewards), label="DQN")
         plt.xlabel("Episode")
         plt.ylabel("Cumulative reward")
@@ -127,4 +138,4 @@ class Logger:
     @staticmethod
     def _moving_average(interval, window_size):
         window = np.ones(int(window_size)) / float(window_size)
-        return np.convolve(interval, window, 'same')
+        return np.convolve(interval, window, "same")

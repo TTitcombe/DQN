@@ -14,14 +14,14 @@ from src.utils.replay_memory import ReplayMemory
 
 def _moving_average(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
-    return list(np.convolve(interval, window, 'same'))
+    return list(np.convolve(interval, window, "same"))
 
 
 # -------Parameters----------
 CAPACITY = 200_000
 SKIP_N = 4
 
-frames =500_000
+frames = 500_000
 TARGET_UPDATE_FREQUENCY = 5_000
 
 EPSILON_METHOD = "linear"
@@ -47,17 +47,34 @@ target_model.eval()
 memory = ReplayMemory(CAPACITY)
 
 # ------Saving and Logging---
-name = (env_name + "_{}capacity".format(CAPACITY) +
-        "_{}{}EPSILON".format(EPSILON_FRAMES, EPSILON_METHOD) + "_{}C".format(TARGET_UPDATE_FREQUENCY))
+name = (
+    env_name
+    + "_{}capacity".format(CAPACITY)
+    + "_{}{}EPSILON".format(EPSILON_FRAMES, EPSILON_METHOD)
+    + "_{}C".format(TARGET_UPDATE_FREQUENCY)
+)
 save_path = os.path.join("results", "models", name)
 
-logger = Logger(save_path, save_best=True, save_every=100,
-                log_every=50, C=TARGET_UPDATE_FREQUENCY, capacity=CAPACITY)
+logger = Logger(
+    save_path,
+    save_best=True,
+    save_every=100,
+    log_every=50,
+    C=TARGET_UPDATE_FREQUENCY,
+    capacity=CAPACITY,
+)
 
 # ------Training------------
 
-agent = DoubleDQNAtariAgent(model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS)
-agent.train(n_frames=frames, C=TARGET_UPDATE_FREQUENCY, render=False, frames_before_train=int(0.05*frames))
+agent = DoubleDQNAtariAgent(
+    model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS
+)
+agent.train(
+    n_frames=frames,
+    C=TARGET_UPDATE_FREQUENCY,
+    render=False,
+    frames_before_train=int(0.05 * frames),
+)
 # This saves a model to results/models/Breakout.....
 
 
@@ -66,5 +83,5 @@ evaluator = AtariEvaluator(model, os.path.join(save_path, "best_model.pth"), dev
 # Play once
 evaluator.record(env, os.path.join("results", "videos", name))
 # Get average score
-#scores = evaluator.play(100, env, render=False)
-#print("{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores))))
+# scores = evaluator.play(100, env, render=False)
+# print("{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores))))

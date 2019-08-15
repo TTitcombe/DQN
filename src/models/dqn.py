@@ -11,6 +11,7 @@ class DQN(nn.Module):
     There is nothing about this architecture which is specific to Deep-q-learning - in fact,
     the algorithm's performance should be fairly robust to the number and sizes of layers.
     """
+
     def __init__(self, input_channels, input_size, output_size):
         """
         Initialise the layers of the DQN
@@ -25,8 +26,10 @@ class DQN(nn.Module):
 
         # Calculate the size of the image when squashed to a linear vector
         # We assume here that the input image is square
-        conv_length = self._conv_shape(self._conv_shape(self._conv_shape(input_size, 4, 4), 4, 2), 3, 1)
-        conv_shape = conv_length**2 * 64
+        conv_length = self._conv_shape(
+            self._conv_shape(self._conv_shape(input_size, 4, 4), 4, 2), 3, 1
+        )
+        conv_shape = conv_length ** 2 * 64
         self.linear1 = nn.Linear(conv_shape, 512)
         self.linear2 = nn.Linear(512, output_size)
 
@@ -44,6 +47,7 @@ class DQN(nn.Module):
 
 class DDQN(DQN):
     """Dueling DQN. We inherit from DQN to get _conv_shape, but overwrite init and forward."""
+
     def __init__(self, input_channels, input_size, output_size):
         super(DQN, self).__init__()
         self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=4, stride=4)
@@ -52,7 +56,9 @@ class DDQN(DQN):
 
         # Calculate the size of the image when squashed to a linear vector
         # We assume here that the input image is square
-        conv_length = self._conv_shape(self._conv_shape(self._conv_shape(input_size, 4, 4), 4, 2), 3, 1)
+        conv_length = self._conv_shape(
+            self._conv_shape(self._conv_shape(input_size, 4, 4), 4, 2), 3, 1
+        )
         conv_shape = conv_length ** 2 * 64
 
         # The linear layers for the action stream

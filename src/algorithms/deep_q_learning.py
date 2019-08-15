@@ -16,7 +16,10 @@ class DQNAgent:
     State information extracted from the environment is used as model input,
     rather than raw pixels.
     """
-    def __init__(self, model, target_model, env, memory, logger, *epsilon_args, **epsilon_kwargs):
+
+    def __init__(
+        self, model, target_model, env, memory, logger, *epsilon_args, **epsilon_kwargs
+    ):
         """
         :param model: The model which decides actions and is trained
         :param target_model: The model used in calculating the loss function. is updated to match model every C steps
@@ -62,14 +65,26 @@ class DQNAgent:
                 state = self._get_initial_state(skip_n)
                 is_done = False
 
-            action, reward, is_done, next_state = self._act(state, 1e7, is_done, False,
-                                                            clip_rewards, skip_n)
+            action, reward, is_done, next_state = self._act(
+                state, 1e7, is_done, False, clip_rewards, skip_n
+            )
             self.memory.update(state, action, reward, next_state)
             state = next_state
             frame += 1
 
-    def train(self, n_frames=10000, C=100, gamma=0.999, batch_size=32, render=True,
-              clip_rewards=True, skip_n=4, pre_fill_memory=True, starting_frame=0, frames_before_train=0):
+    def train(
+        self,
+        n_frames=10000,
+        C=100,
+        gamma=0.999,
+        batch_size=32,
+        render=True,
+        clip_rewards=True,
+        skip_n=4,
+        pre_fill_memory=True,
+        starting_frame=0,
+        frames_before_train=0,
+    ):
         # TODO This should be refactored out of the agent class
         # TODO the agent class should only contain the update rules for the algorithm
         # TODO create a separate training and evaluating class
@@ -95,23 +110,24 @@ class DQNAgent:
                     if render:
                         self.env.render()
 
-                    episode_reward = 0.
-                    episode_loss = 0.
+                    episode_reward = 0.0
+                    episode_loss = 0.0
                     is_done = False
 
-                action, reward, is_done, next_state = self._act(state, frame, is_done, render,
-                                                                clip_rewards, skip_n)
+                action, reward, is_done, next_state = self._act(
+                    state, frame, is_done, render, clip_rewards, skip_n
+                )
                 self.memory.update(state, action, reward, next_state)
                 state = next_state
 
                 # Update
-                if frame > (frames_before_train-1):
+                if frame > (frames_before_train - 1):
                     loss = self._update_model(gamma, batch_size)
 
                     if frame % C == 0:
                         self._update_target_model()
                 else:
-                    loss = 0.
+                    loss = 0.0
 
                 episode_loss += loss
                 episode_reward += reward
@@ -124,11 +140,15 @@ class DQNAgent:
             # if we restart training later
             self.logger.report()
             self.logger.save_data()
-            self.logger.save_model(self.model, "episode_{}_training_interrupted".format(episode_count))
+            self.logger.save_model(
+                self.model, "episode_{}_training_interrupted".format(episode_count)
+            )
         else:
             random_rewards = []
             for episode in range(episode_count):
-                random_rewards.append(self._play_random_episode(False, clip_rewards, skip_n))
+                random_rewards.append(
+                    self._play_random_episode(False, clip_rewards, skip_n)
+                )
 
             print("\nBest reward: {}".format(self.logger.best_reward))
 
@@ -156,8 +176,9 @@ class DQNAgent:
                     self.env.render()
                 is_done = False
 
-            action, reward, is_done, next_state = self._act(state, 0, is_done, render,
-                                                            clip_rewards, skip_n)
+            action, reward, is_done, next_state = self._act(
+                state, 0, is_done, render, clip_rewards, skip_n
+            )
             self.memory.update(state, action, reward, next_state)
             state = next_state
             frame += 1
@@ -168,10 +189,12 @@ class DQNAgent:
         if render:
             self.env.render()
         is_done = False
-        episode_reward = 0.
+        episode_reward = 0.0
 
         while not is_done:
-            action, reward, is_done, next_state = self._act(state, 0, False, render, clip_rewards, skip_n)
+            action, reward, is_done, next_state = self._act(
+                state, 0, False, render, clip_rewards, skip_n
+            )
 
             if update:
                 self.memory.update(state, action, reward, next_state)
@@ -182,7 +205,9 @@ class DQNAgent:
 
     def _act(self, state, frame, is_done, render, clip_rewards, skip_n):
         # Select an action
-        action = self._select_action(self._get_state_from_frame(state), self.epsilon(frame))
+        action = self._select_action(
+            self._get_state_from_frame(state), self.epsilon(frame)
+        )
 
         next_state, reward, is_done, _ = self.env.step(action.item())
         if render:
@@ -230,8 +255,11 @@ class DQNAgent:
 
             # Get y
             rewards = torch.cat(samples.reward)
-            non_terminal_indices = torch.tensor(tuple(map(lambda s: s is not None, samples.next_state)),
-                                                device=self.device, dtype=torch.bool)
+            non_terminal_indices = torch.tensor(
+                tuple(map(lambda s: s is not None, samples.next_state)),
+                device=self.device,
+                dtype=torch.bool,
+            )
             next_states = torch.cat([ns for ns in samples.next_state if ns is not None])
             max_q = self.target_model(next_states).max(1)[0].detach()
             additional_qs = torch.zeros(batch_size, device=self.device)
@@ -252,7 +280,7 @@ class DQNAgent:
             self.optimizer.step()
             return loss.item()
         else:
-            return 0.
+            return 0.0
 
     def _update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())
@@ -272,7 +300,7 @@ class DQNAtariAgent(DQNAgent):
         state = state.transpose((2, 0, 1))
 
         # Scale
-        state = state.astype('float32') / 255.0
+        state = state.astype("float32") / 255.0
 
         # To torch
         return torch.from_numpy(state).unsqueeze(0).to(self.device)

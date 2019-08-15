@@ -14,7 +14,7 @@ from src.utils.replay_memory import ReplayMemory
 
 def _moving_average(interval, window_size):
     window = np.ones(int(window_size)) / float(window_size)
-    return list(np.convolve(interval, window, 'same'))
+    return list(np.convolve(interval, window, "same"))
 
 
 # -------Parameters----------
@@ -32,7 +32,9 @@ EPSILON_KWARGS = {"epsilon_min": 0.1}
 
 # ------Env------------------
 name = "CarRacing-v0"
-env = gym.make(name, verbose=0)  # Verbosity off for CarRacing - track generation info can get annoying!
+env = gym.make(
+    name, verbose=0
+)  # Verbosity off for CarRacing - track generation info can get annoying!
 env = wrap_deepmind(env, episode_life=False)
 if "CarRacing" in name:
     # DQN needs discrete inputs
@@ -51,11 +53,19 @@ memory = ReplayMemory(CAPACITY)
 # ------Saving and Logging----
 save_path = os.path.join("results", "models", name)
 
-logger = Logger(save_path, save_best=True, save_every=50,
-                log_every=25, C=TARGET_UPDATE_FREQUENCY, capacity=CAPACITY)
+logger = Logger(
+    save_path,
+    save_best=True,
+    save_every=50,
+    log_every=25,
+    C=TARGET_UPDATE_FREQUENCY,
+    capacity=CAPACITY,
+)
 
 # ------Training--------------
-agent = DoubleDQNAtariAgent(model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS)
+agent = DoubleDQNAtariAgent(
+    model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS
+)
 agent.train(n_frames=frames, C=TARGET_UPDATE_FREQUENCY, render=False)
 # This saves a model to results/models/CarRacing-v0
 
@@ -68,4 +78,6 @@ evaluator.record(env, os.path.join("results", "videos", name))
 
 # Get average score
 scores = evaluator.play(10, env, render=False)
-print("{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores))))
+print(
+    "{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores)))
+)
