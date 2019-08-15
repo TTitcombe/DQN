@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pickle
 from torch import save as tsave
 
 from .general_functions import create_dir
@@ -80,8 +81,16 @@ class Logger:
         print("Loss: {:.3f} +/- {:.1f}".format(mean_loss, se_loss))
         print("Reward: {:.3f} +/- {:.1f}".format(mean_reward, se_reward))
 
-    def save_model(self):
-        pass
+    def save_data(self):
+        with open(os.path.join(self.save_path, "temp_rewards.pkl"), "wb") as f:
+            pickle.dump(self._rewards, f)
+        with open(os.path.join(self.save_path, "temp_losses.pkl"), "wb") as f:
+            pickle.dump(self._losses, f)
+
+    def save_model(self, model, name):
+        if not name.endswith(".pth"):
+            name += ".pth"
+        tsave(model, os.path.join(self.save_path, name))
 
     def plot_reward(self, sliding_window=50, show=False, save=False):
         if self.random_rewards:
