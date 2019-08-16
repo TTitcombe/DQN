@@ -307,7 +307,14 @@ def make_atari(env_id, max_episode_steps=None):
 
 
 def wrap_deepmind(
-    env, episode_life=True, clip_rewards=True, frame_stack=True, scale=False
+    env,
+    episode_life=True,
+    clip_rewards=True,
+    frame_stack=True,
+    scale=False,
+    width=84,
+    height=84,
+    skip_n=4,
 ):
     """Configure environment for DeepMind-style Atari.
     """
@@ -317,13 +324,13 @@ def wrap_deepmind(
         env = FireResetEnv(env)
     env = NoopResetEnv(env, noop_max=30)
 
-    env = WarpFrame(env)
+    env = WarpFrame(env, width=width, height=height)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:
         env = ClipRewardEnv(env)
     if frame_stack:
-        env = FrameStack(env, 4)
+        env = FrameStack(env, skip_n)
     return env
 
 

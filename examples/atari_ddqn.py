@@ -19,49 +19,43 @@ def _moving_average(interval, window_size):
 
 # -------Parameters----------
 CAPACITY = 200_000
-SKIP_N = 4
+SKIP_N = 2
 
-frames = 500_000
-TARGET_UPDATE_FREQUENCY = 5_000
+frames = 1_000_000
+TARGET_UPDATE_FREQUENCY = 10_000
 
 EPSILON_METHOD = "linear"
 EPSILON_FRAMES = int(0.2 * frames)
 EPSILON_ARGS = [EPSILON_METHOD, EPSILON_FRAMES]
 EPSILON_KWARGS = {"epsilon_min": 0.1}
 
-
+width = height = 64
 # ------Env------------------
-env_name = "SeaquestNoFrameskip-v4"
+env_name = "BreakoutNoFrameskip-v4"
 env = make_atari(env_name)
-env = wrap_deepmind(env)
+env = wrap_deepmind(env, width=width, height=height, skip_n = SKIP_N)
 n_actions = env.action_space.n
-print(n_actions)
 
 # -------Models--------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = DDQN(SKIP_N, 84, n_actions).to(device)
-target_model = DDQN(SKIP_N, 84, n_actions).to(device)
+model = DDQN(SKIP_N, width, n_actions).to(device)
+target_model = DDQN(SKIP_N, width, n_actions).to(device)
 target_model.load_state_dict(model.state_dict())
 target_model.eval()
 
 memory = ReplayMemory(CAPACITY)
 
 # ------Saving and Logging---
-name = (
-    env_name
-    + "_{}capacity".format(CAPACITY)
-    + "_{}{}EPSILON".format(EPSILON_FRAMES, EPSILON_METHOD)
-    + "_{}C".format(TARGET_UPDATE_FREQUENCY)
-)
+name = env_name + "_small"
 save_path = os.path.join("results", "models", name)
 
 logger = Logger(
     save_path,
     save_best=True,
     save_every=100,
-    log_every=50,
+    log_every=25,
     C=TARGET_UPDATE_FREQUENCY,
-    capacity=CAPACITY,
+    capacity=CAPACITY
 )
 
 # ------Training------------
@@ -73,15 +67,14 @@ agent.train(
     n_frames=frames,
     C=TARGET_UPDATE_FREQUENCY,
     render=False,
-    frames_before_train=int(0.05 * frames),
 )
 # This saves a model to results/models/Breakout.....
 
 
 # ------Evaluating----------
-evaluator = AtariEvaluator(model, os.path.join(save_path, "best_model.pth"), device)
+#evaluator = AtariEvaluator(model, os.path.join(save_path, "best_model.pth"), device)
 # Play once
-evaluator.record(env, os.path.join("results", "videos", name))
+#evaluator.record(env, os.path.join("results", "videos", name))
 # Get average score
 # scores = evaluator.play(100, env, render=False)
 # print("{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores))))

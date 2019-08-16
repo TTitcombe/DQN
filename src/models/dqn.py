@@ -61,19 +61,22 @@ class DDQN(DQN):
         )
         conv_shape = conv_length ** 2 * 64
 
+        self.linear1 = nn.Linear(conv_shape, 512)
+
         # The linear layers for the action stream
-        self.action1 = nn.Linear(conv_shape, 512)
-        self.action2 = nn.Linear(512, output_size)
+        self.action1 = nn.Linear(512, 256)
+        self.action2 = nn.Linear(256, output_size)
 
         # The linear layers for the state stream
-        self.state1 = nn.Linear(conv_shape, 512)
-        self.state2 = nn.Linear(512, output_size)
+        self.state1 = nn.Linear(512, 256)
+        self.state2 = nn.Linear(256, output_size)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))
         x = F.relu(self.conv2(x))
         x = F.relu(self.conv3(x))
         x = x.view(x.size(0), -1)
+        x = F.relu(self.linear1(x))
 
         # Action stream
         x_action = F.relu(self.action1(x))
