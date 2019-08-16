@@ -27,9 +27,11 @@ class Logger:
 
         self._rewards = []
         self._losses = []
+        self._q_values = []
 
         self._block_rewards = []
         self._block_losses = []
+        self._block_q = []
 
         self.random_rewards = []
 
@@ -42,15 +44,18 @@ class Logger:
     def clear(self):
         self._rewards = []
         self._losses = []
+        self._q_values = []
         self._block_rewards = []
         self._block_losses = []
+        self._block_q = []
         self.random_rewards = []
         self.episode = 0
 
-    def update(self, reward, loss, model):
+    def update(self, reward, loss, model, q=0):
         self.episode += 1
         self._block_rewards.append(reward)
         self._block_losses.append(loss)
+        self._block_q.append(q)
 
         if self.episode % self.log_every == 0:
             self.report()
@@ -67,14 +72,18 @@ class Logger:
         if self.log_style == "continuous":
             losses = self._losses
             rewards = self._rewards
+            q = self._q_values
         elif self.log_style == "block":
             losses = self._block_losses
             rewards = self._block_rewards
+            q = self._block_q
 
             self._losses.extend(self._block_losses)
             self._block_losses = []
             self._rewards.extend(self._block_rewards)
             self._block_rewards = []
+            self._q_values.extend(self._block_q)
+            self._block_q = []
         else:
             raise RuntimeError("Log style must be 'continuous' or 'block'")
 
@@ -83,6 +92,9 @@ class Logger:
 
         mean_reward = np.mean(rewards)
         se_reward = np.std(rewards) / np.sqrt(len(rewards))
+
+        mean_q = np.mean(q)
+        se_q = np.std(q) / np.sqrt(len(q))
 
         print("\nEpisode {}".format(self.episode))
         print("Loss: {:.3f} +/- {:.1f}".format(mean_loss, se_loss))
@@ -93,11 +105,27 @@ class Logger:
             pickle.dump(self._rewards, f)
         with open(os.path.join(self.save_path, "temp_losses.pkl"), "wb") as f:
             pickle.dump(self._losses, f)
+        with open(os.path.join(self.save_path, "temp_q.pkl"), "wb") as f:
+            pickle.dump(self._q_values, f)
 
     def save_model(self, model, name):
         if not name.endswith(".pth"):
             name += ".pth"
         tsave(model, os.path.join(self.save_path, name))
+
+    def plot_q(self, sliding_window=50, show=False, save=False):
+        q = self._moving_average(self._q_values, sliding_window)
+        plt.plot(range(len(q)), q, label="Estimated Q values")
+
+        plt.xlabel("Episode")
+        plt.ylabel("Total episode Q value predictions")
+        plt.legend()
+
+        if save:
+            plt.savefig(os.path.join(self.save_path, "q_values.png"))
+
+        if show:
+            plt.show()
 
     def plot_reward(self, sliding_window=50, show=False, save=False):
         if self.random_rewards:
