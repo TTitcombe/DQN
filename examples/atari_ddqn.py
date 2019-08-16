@@ -33,7 +33,7 @@ width = height = 64
 # ------Env------------------
 env_name = "BreakoutNoFrameskip-v4"
 env = make_atari(env_name)
-env = wrap_deepmind(env, width=width, height=height, skip_n = SKIP_N)
+env = wrap_deepmind(env, width=width, height=height, skip_n=SKIP_N)
 n_actions = env.action_space.n
 
 # -------Models--------------
@@ -55,7 +55,7 @@ logger = Logger(
     save_every=100,
     log_every=25,
     C=TARGET_UPDATE_FREQUENCY,
-    capacity=CAPACITY
+    capacity=CAPACITY,
 )
 
 # ------Training------------
@@ -63,18 +63,14 @@ logger = Logger(
 agent = DoubleDQNAtariAgent(
     model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS
 )
-agent.train(
-    n_frames=frames,
-    C=TARGET_UPDATE_FREQUENCY,
-    render=False,
-)
+agent.train(n_frames=frames, C=TARGET_UPDATE_FREQUENCY, render=False)
 # This saves a model to results/models/Breakout.....
 
 
 # ------Evaluating----------
-#evaluator = AtariEvaluator(model, os.path.join(save_path, "best_model.pth"), device)
+# evaluator = AtariEvaluator(model, os.path.join(save_path, "best_model.pth"), device)
 # Play once
-#evaluator.record(env, os.path.join("results", "videos", name))
+# evaluator.record(env, os.path.join("results", "videos", name))
 # Get average score
 # scores = evaluator.play(100, env, render=False)
 # print("{:.3f} +/- {:.1f}".format(np.mean(scores), np.std(scores) / np.sqrt(len(scores))))

@@ -90,7 +90,9 @@ class DQNAgent:
         # TODO create a separate training and evaluating class
         if pre_fill_memory:
             # Pre-fill memory up to 10% capacity with random play
-            pre_fill_frames = self.memory.capacity  # min(self.memory.capacity, int(n_frames * 0.1))
+            pre_fill_frames = (
+                self.memory.capacity
+            )  # min(self.memory.capacity, int(n_frames * 0.1))
             print("Getting {} random memories...".format(pre_fill_frames))
             self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
 
@@ -100,7 +102,7 @@ class DQNAgent:
         is_done = True
         episode_count = 0
 
-        pbar = tqdm(total=n_frames//10)
+        pbar = tqdm(total=n_frames // 10)
         try:
             while frame < n_frames or not is_done:
 
