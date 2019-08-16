@@ -90,7 +90,7 @@ class DQNAgent:
         # TODO create a separate training and evaluating class
         if pre_fill_memory:
             # Pre-fill memory up to 10% capacity with random play
-            pre_fill_frames = min(self.memory.capacity, int(n_frames * 0.1))
+            pre_fill_frames = self.memory.capacity  # min(self.memory.capacity, int(n_frames * 0.1))
             print("Getting {} random memories...".format(pre_fill_frames))
             self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
 
@@ -100,6 +100,7 @@ class DQNAgent:
         is_done = True
         episode_count = 0
 
+        pbar = tqdm(total=n_frames//10)
         try:
             while frame < n_frames or not is_done:
 
@@ -132,6 +133,8 @@ class DQNAgent:
                 episode_loss += loss
                 episode_reward += reward
                 frame += 1
+                if frame % 10 == 0:
+                    pbar.update()
 
                 if is_done:
                     self.logger.update(episode_reward, episode_loss, self.model)
@@ -158,6 +161,7 @@ class DQNAgent:
 
         # Clean-up
         self.env.close()
+        pbar.close()
 
     def _fill_memory_with_random(self, n_frames, render, clip_rewards, skip_n):
         frame = 0
@@ -271,7 +275,7 @@ class DQNAgent:
             q = self.model(torch.cat(samples.state)).gather(1, actions)
 
             # Update the model
-            loss = F.mse_loss(y, q)
+            loss = F.smooth_l1_loss(q, y)
             self._losses.append(loss.item())
             self.optimizer.zero_grad()
             loss.backward()

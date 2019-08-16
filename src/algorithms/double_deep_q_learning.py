@@ -54,7 +54,7 @@ class DoubleDQNAgent(DQNAgent):
             q = self.model(states).gather(1, actions)
 
             # Update the model
-            loss = F.mse_loss(y, q)
+            loss = F.smooth_l1_loss(q, y)
             self._losses.append(loss.item())
             self.optimizer.zero_grad()
             loss.backward()

@@ -9,7 +9,6 @@ class RandomAgent:
             self.env.reset()
             while not is_done:
                 _, _, is_done, _ = self.env.step(self.env.action_space.sample())
-                print("playing")
                 if render:
                     self.env.render()
             episode += 1
