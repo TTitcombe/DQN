@@ -21,7 +21,7 @@ class ReplayMemory:
         self.capacity = capacity
         self.memory = deque(maxlen=capacity)
 
-    def update(self, *args):
+    def add_memory(self, *args):
         """
         Add a memory
         :param args: state, action, reward, next_state
@@ -42,11 +42,12 @@ class ReplayMemory:
 
 
 class PrioritisedMemory(ReplayMemory):
-    def __init__(self, capacity, alpha=1.0, beta=1.0):
+    def __init__(self, capacity, beta_anneal_frames, alpha=1.0, beta=1.0):
         super(PrioritisedMemory, self).__init__(capacity)
 
         self.alpha = alpha
         self.beta = beta
+        self.beta_anneal = (1.0 - self.beta) / beta_anneal_frames
 
         self.current_node = 0
         self.capacity = capacity
@@ -85,26 +86,39 @@ class PrioritisedMemory(ReplayMemory):
 
     def update(self, indices, td_errors):
         for index, td_error in zip(indices, td_errors):
-            self.update_memory(index, td_error)
+            self.update_memory(index, float(td_error))
 
     def update_memory(self, index, td_error):
         td_error = abs(td_error) ** self.alpha
         self._update_p(index, td_error ** self.alpha)
 
     def sample(self, n):
+        indices = []
+        w_values = []
         memories = []
         p_range = self.p_tree[0] / n
+
+        if len(self.memory) == 0:
+            p_min = 0.
+        else:
+            p_min = np.min(self.p_tree[-self.capacity:-self.capacity + len(self.memory)])
+        w_max = p_min**self.beta
 
         p_start = 0
         for _ in range(n):
             p_end = p_start + p_range
 
             p_selection = random.uniform(p_start, p_end)
-            memories.append(self._sample_p(p_selection))
+            index, p, memory = self._sample_p(p_selection)
+            indices.append(index)
+            w_values.append(w_max / p**self.beta)
+            memories.append(memory)
 
             p_start = p_end
 
-        return memories
+        self.beta += self.beta_anneal
+
+        return indices, np.mean(w_values), memories
 
     def _sample_p(self, total_p):
         index = self._retrieve_index(0, total_p)

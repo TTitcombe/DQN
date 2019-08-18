@@ -103,6 +103,8 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+.idea/
+
 
 # Gym environments
 custom_envs/
