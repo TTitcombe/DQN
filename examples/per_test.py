@@ -8,7 +8,7 @@ import torch
 
 from src.algorithms.double_deep_q_learning import DoubleDQNAtariAgent
 from src.models import DDQN
-from src.utils.env import DiscreteCarRacing, wrap_deepmind
+from src.utils.env import wrap_box2d
 from src.utils.logger import Logger
 from src.utils.replay_memory import ReplayMemory, PrioritisedMemory
 
@@ -36,11 +36,8 @@ env = gym.make(
     name, verbose=0
 )  # Verbosity off for CarRacing - track generation info can get annoying!
 
-env = wrap_deepmind(env, episode_life=False)
+env = wrap_box2d(env, True)
 
-if "CarRacing" in name:
-    # DQN needs discrete inputs
-    env = DiscreteCarRacing(env)
 n_actions = env.action_space.n
 
 # -------------------------------------------------Random memory---------------------------------------------------------
@@ -67,7 +64,7 @@ logger = Logger(
 
 # ------Training--------------
 agent = DoubleDQNAtariAgent(
-    model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS
+    model, target_model, env, memory, logger, False, *EPSILON_ARGS, **EPSILON_KWARGS
 )
 agent.train(n_frames=frames, C=TARGET_UPDATE_FREQUENCY, render=False)
 
@@ -82,7 +79,7 @@ target_model = DDQN(SKIP_N, 84, n_actions).to(device)
 target_model.load_state_dict(model.state_dict())
 target_model.eval()
 
-memory = PrioritisedMemory(CAPACITY)
+memory = PrioritisedMemory(CAPACITY, EPSILON_FRAMES)
 
 # ------Saving and Logging----
 env.reset()
@@ -90,7 +87,7 @@ logger.clear()
 
 # ------Training--------------
 agent = DoubleDQNAtariAgent(
-    model, target_model, env, memory, logger, *EPSILON_ARGS, **EPSILON_KWARGS
+    model, target_model, env, memory, logger, True, *EPSILON_ARGS, **EPSILON_KWARGS
 )
 agent.train(n_frames=frames, C=TARGET_UPDATE_FREQUENCY, render=False)
 
