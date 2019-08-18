@@ -18,7 +18,7 @@ class DQNAgent:
     """
 
     def __init__(
-        self, model, target_model, env, memory, logger, *epsilon_args, **epsilon_kwargs
+        self, model, target_model, env, memory, logger, per, *epsilon_args, **epsilon_kwargs
     ):
         """
         :param model: The model which decides actions and is trained
@@ -28,6 +28,8 @@ class DQNAgent:
         :type memory: utils.replay_memory.ReplayMemory
         :param logger: An object which stores episode rewards and losses, and can generate charts
         :type logger: utils.logger.Logger
+        :param per: Whether replay memory is prioritised
+        :param per: bool
         :param epsilon_args: args to construct our epsilon-greedy policy:
                                     anneal method and number of frames over which to anneal
         :param epsilon_kwargs: kwargs to construct our epsilon-greedy policy:
@@ -40,6 +42,7 @@ class DQNAgent:
 
         self.env = env
         self.memory = memory
+        self.per = per
         self.epsilon = Epsilon(*epsilon_args, **epsilon_kwargs)
 
         self._rewards = []
@@ -58,8 +61,6 @@ class DQNAgent:
         frame = 0
         is_done = True
         while frame < self.memory.capacity:
-            if frame % 100 == 0:
-                print(frame)
             # If episode has finished, start a new one
             if is_done:
                 state = self._get_initial_state(skip_n)
@@ -68,7 +69,7 @@ class DQNAgent:
             action, reward, is_done, next_state = self._act(
                 state, 1e7, is_done, False, clip_rewards, skip_n
             )
-            self.memory.update(state, action, reward, next_state)
+            self.memory.add_memory(state, action, reward, next_state)
             state = next_state
             frame += 1
 
@@ -120,7 +121,7 @@ class DQNAgent:
                 action, reward, is_done, next_state = self._act(
                     state, frame, is_done, render, clip_rewards, skip_n
                 )
-                self.memory.update(state, action, reward, next_state)
+                self.memory.add_memory(state, action, reward, next_state)
                 state = next_state
 
                 # Update
@@ -185,7 +186,7 @@ class DQNAgent:
             action, reward, is_done, next_state = self._act(
                 state, 0, is_done, render, clip_rewards, skip_n
             )
-            self.memory.update(state, action, reward, next_state)
+            self.memory.add_memory(state, action, reward, next_state)
             state = next_state
             frame += 1
         pbar.close()
@@ -203,7 +204,7 @@ class DQNAgent:
             )
 
             if update:
-                self.memory.update(state, action, reward, next_state)
+                self.memory.add_memory(state, action, reward, next_state)
 
             state = next_state
             episode_reward += reward

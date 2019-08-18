@@ -18,7 +18,10 @@ class DoubleDQNAgent(DQNAgent):
 
     def _update_model(self, gamma, batch_size):
         if len(self.memory) > batch_size:
-            samples = self.memory.sample(batch_size)
+            if self.per:
+                indices, w_value, samples = self.memory.sample(batch_size)
+            else:
+                samples = self.memory.sample(batch_size)
             samples = Transition(*zip(*samples))
 
             # Get y
@@ -46,6 +49,10 @@ class DoubleDQNAgent(DQNAgent):
             additional_qs[non_terminal_indices] = max_q
             y = rewards + additional_qs.unsqueeze(1) * gamma
 
+            if self.per:
+                # Update new td-errors
+                self.memory.update(indices, y.detach().numpy())
+
             # get Q for each action we took in states
             actions = torch.cat(samples.action)
             states = torch.cat(
@@ -59,6 +66,8 @@ class DoubleDQNAgent(DQNAgent):
             self.optimizer.zero_grad()
             loss.backward()
             for param in self.model.parameters():
+                if self.per:
+                    param.grad.data.mul_(w_value)
                 param.grad.data.clamp_(-1, 1)
             self.optimizer.step()
             return loss.item()

@@ -334,6 +334,24 @@ def wrap_deepmind(
     return env
 
 
+def wrap_box2d(
+        env,
+        carracing,
+        width=84,
+        height=84,
+        skip_n=4,
+        clip_rewards=True,
+):
+    env = WarpFrame(env, width=width, height=height)
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    env = FrameStack(env, skip_n)
+    if carracing:
+        env = DiscreteCarRacing(env)
+    return env
+
+
+
 NUM_ACTIONS = 4
 ALLOWED_ACTIONS = [[-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 0.8]]
 
