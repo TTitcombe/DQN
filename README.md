@@ -1,3 +1,5 @@
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TTitcombe/DQN/blob/master/)
+
 # DQN
 
 ![DDQN CarRacing](results/videos/carracing_good.gif)
