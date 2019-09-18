@@ -42,11 +42,14 @@ class ReplayMemory:
 
 
 class PrioritisedMemory(ReplayMemory):
-    def __init__(self, capacity, beta_anneal_frames, alpha=1.0, beta=1.0):
+    def __init__(self, capacity, beta_anneal_frames=None, alpha=0.6, beta=0.4):
         super(PrioritisedMemory, self).__init__(capacity)
 
         self.alpha = alpha
         self.beta = beta
+
+        if not beta_anneal_frames:
+            beta_anneal_frames = int(capacity * 0.1)
         self.beta_anneal = (1.0 - self.beta) / beta_anneal_frames
 
         self.current_node = 0
@@ -101,7 +104,8 @@ class PrioritisedMemory(ReplayMemory):
         if len(self.memory) == 0:
             p_min = 0.
         else:
-            p_min = np.min(self.p_tree[-self.capacity:-self.capacity + len(self.memory)])
+            up_to_point = min(-1, -self.capacity + len(self.memory))
+            p_min = np.min(self.p_tree[-self.capacity:up_to_point])
         w_max = p_min**self.beta
 
         p_start = 0
@@ -118,7 +122,7 @@ class PrioritisedMemory(ReplayMemory):
 
         self.beta += self.beta_anneal
 
-        return indices, np.mean(w_values), memories
+        return indices, w_values, memories
 
     def _sample_p(self, total_p):
         index = self._retrieve_index(0, total_p)

@@ -85,15 +85,14 @@ class DQNAgent:
         pre_fill_memory=True,
         starting_frame=0,
         frames_before_train=0,
+        plot_results=True,
     ):
         # TODO This should be refactored out of the agent class
         # TODO the agent class should only contain the update rules for the algorithm
         # TODO create a separate training and evaluating class
         if pre_fill_memory:
             # Pre-fill memory up to 10% capacity with random play
-            pre_fill_frames = (
-                self.memory.capacity
-            )  # min(self.memory.capacity, int(n_frames * 0.1))
+            pre_fill_frames = min(self.memory.capacity, int(n_frames * 0.1))
             print("Getting {} random memories...".format(pre_fill_frames))
             self._fill_memory_with_random(pre_fill_frames, False, clip_rewards, skip_n)
 
@@ -116,6 +115,7 @@ class DQNAgent:
 
                     episode_reward = 0.0
                     episode_loss = 0.0
+                    episode_q = []
                     is_done = False
 
                 action, reward, is_done, next_state = self._act(
@@ -126,21 +126,23 @@ class DQNAgent:
 
                 # Update
                 if frame > (frames_before_train - 1):
-                    loss = self._update_model(gamma, batch_size)
+                    loss, q = self._update_model(gamma, batch_size)
 
                     if frame % C == 0:
                         self._update_target_model()
                 else:
                     loss = 0.0
+                    q = 0.0
 
                 episode_loss += loss
-                episode_reward += reward
+                episode_q.append(q)
+                episode_reward += reward.item()
                 frame += 1
                 if frame % 10 == 0:
                     pbar.update()
 
                 if is_done:
-                    self.logger.update(episode_reward, episode_loss, self.model)
+                    self.logger.update(episode_reward, episode_loss, np.mean(episode_q), self.model)
         except KeyboardInterrupt:
             # Save the current data so we can produce a full chart
             # if we restart training later
@@ -150,17 +152,17 @@ class DQNAgent:
                 self.model, "episode_{}_training_interrupted".format(episode_count)
             )
         else:
-            random_rewards = []
-            for episode in range(episode_count):
-                random_rewards.append(
-                    self._play_random_episode(False, clip_rewards, skip_n)
-                )
+            if plot_results:
+                random_rewards = []
+                for episode in range(episode_count):
+                    random_rewards.append(
+                        self._play_random_episode(False, clip_rewards, skip_n)
+                    )
+
+                self.logger.random_rewards = random_rewards
+                self.logger.plot_reward(save=True)
 
             print("\nBest reward: {}".format(self.logger.best_reward))
-
-            self.logger.random_rewards = random_rewards
-
-            self.logger.plot_reward(save=True)
 
         # Clean-up
         self.env.close()
@@ -232,7 +234,7 @@ class DQNAgent:
             next_frame = self._get_state_from_frame(next_frame)
             next_state = next_frame if next_state is None else torch.cat((next_state, next_frame), dim=1)"""
 
-        reward = torch.tensor([[reward]], device=self.device)
+        reward = torch.tensor([[reward]], device=self.device, dtype=torch.float)
 
         return action, reward, is_done, next_state
 
@@ -248,12 +250,14 @@ class DQNAgent:
         return action
 
     def _get_initial_state(self, skip_n):
-        reset_frame = self.env.reset()
-        reset_state = self._get_state_from_frame(reset_frame)
-        return torch.cat([reset_state] * skip_n, dim=1)
+        return self.env.reset()
 
     def _get_state_from_frame(self, frame):
-        return torch_from_frame(frame, self.device)
+        if frame is None:
+            return frame
+
+        state = np.array(frame, dtype="float32")
+        return torch.from_numpy(state).unsqueeze(0).to(self.device)
 
     def _update_model(self, gamma, batch_size):
         if len(self.memory) > batch_size:
@@ -276,6 +280,7 @@ class DQNAgent:
             # get Q for each action we took in states
             actions = torch.cat(samples.action)
             q = self.model(torch.cat(samples.state)).gather(1, actions)
+            average_q = torch.mean(q).item()
 
             # Update the model
             loss = F.smooth_l1_loss(q, y)
@@ -285,9 +290,9 @@ class DQNAgent:
             for param in self.model.parameters():
                 param.grad.data.clamp_(-1, 1)
             self.optimizer.step()
-            return loss.item()
+            return loss.item(), average_q
         else:
-            return 0.0
+            return 0.0, 0.0
 
     def _update_target_model(self):
         self.target_model.load_state_dict(self.model.state_dict())

@@ -1,6 +1,7 @@
 """
 A collection of env wrappers to provide utility functionality, such as pre-stacking frames.
 Taken from openai/baselines/common/atari_wrappers.py
+Copyright (c) 2017 OpenAI (http://openai.com)
 """
 import numpy as np
 from collections import deque
@@ -336,7 +337,6 @@ def wrap_deepmind(
 
 def wrap_box2d(
         env,
-        carracing,
         width=84,
         height=84,
         skip_n=4,
@@ -346,9 +346,19 @@ def wrap_box2d(
     if clip_rewards:
         env = ClipRewardEnv(env)
     env = FrameStack(env, skip_n)
-    if carracing:
+    if "CarRacing" in env.unwrapped.spec.id:
         env = DiscreteCarRacing(env)
     return env
+
+
+def wrap_no_image(
+        env,
+        skip_n=4,
+        clip_rewards=True,
+):
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    return FrameStack(env, skip_n)
 
 
 

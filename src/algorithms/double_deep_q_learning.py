@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -19,9 +20,11 @@ class DoubleDQNAgent(DQNAgent):
     def _update_model(self, gamma, batch_size):
         if len(self.memory) > batch_size:
             if self.per:
-                indices, w_value, samples = self.memory.sample(batch_size)
+                indices, w_values, samples = self.memory.sample(batch_size)
+                w_values = torch.Tensor(w_values)
             else:
                 samples = self.memory.sample(batch_size)
+                w_values = torch.ones((len(samples), 1))
             samples = Transition(*zip(*samples))
 
             # Get y
@@ -61,18 +64,17 @@ class DoubleDQNAgent(DQNAgent):
             q = self.model(states).gather(1, actions)
 
             # Update the model
-            loss = F.smooth_l1_loss(q, y)
+            loss = F.smooth_l1_loss(q, y, reduction='none')
+            loss = (loss * w_values).mean()
             self._losses.append(loss.item())
             self.optimizer.zero_grad()
             loss.backward()
             for param in self.model.parameters():
-                if self.per:
-                    param.grad.data.mul_(w_value)
                 param.grad.data.clamp_(-1, 1)
             self.optimizer.step()
-            return loss.item()
+            return loss.item(), torch.mean(q).item()
         else:
-            return 0.0
+            return 0.0, 0.0
 
 
 class DoubleDQNAtariAgent(DQNAtariAgent, DoubleDQNAgent):

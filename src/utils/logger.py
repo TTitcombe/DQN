@@ -51,7 +51,7 @@ class Logger:
         self.random_rewards = []
         self.episode = 0
 
-    def update(self, reward, loss, model, q=0):
+    def update(self, reward, loss, q, model):
         self.episode += 1
         self._block_rewards.append(reward)
         self._block_losses.append(loss)
@@ -99,6 +99,7 @@ class Logger:
         print("\nEpisode {}".format(self.episode))
         print("Loss: {:.3f} +/- {:.1f}".format(mean_loss, se_loss))
         print("Reward: {:.3f} +/- {:.1f}".format(mean_reward, se_reward))
+        print("Q: {:.3f} +/- {:.1f}".format(mean_q, se_q))
 
     def save_data(self):
         with open(os.path.join(self.save_path, "temp_rewards.pkl"), "wb") as f:
