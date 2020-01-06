@@ -69,7 +69,7 @@ class DDQN(DQN):
 
         # The linear layers for the state stream
         self.state1 = nn.Linear(512, 256)
-        self.state2 = nn.Linear(256, output_size)
+        self.state2 = nn.Linear(256, 1)
 
     def forward(self, x):
         x = F.relu(self.conv1(x))

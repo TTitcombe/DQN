@@ -21,7 +21,7 @@ def _moving_average(interval, window_size):
 CAPACITY = 50_000
 SKIP_N = 4
 
-frames = 250_000
+frames = 100_000
 TARGET_UPDATE_FREQUENCY = 1_000
 
 EPSILON_METHOD = "linear"

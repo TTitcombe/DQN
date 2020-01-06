@@ -334,8 +334,34 @@ def wrap_deepmind(
     return env
 
 
+def wrap_box2d(
+        env,
+        width=84,
+        height=84,
+        skip_n=4,
+        clip_rewards=True,
+):
+    env = WarpFrame(env, width=width, height=height)
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    env = FrameStack(env, skip_n)
+    if "CarRacing" in env.unwrapped.spec.id:
+        env = DiscreteCarRacing(env)
+    return env
+
+
+def wrap_no_image(
+        env,
+        skip_n=4,
+        clip_rewards=True,
+):
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    return FrameStack(env, skip_n)
+
+
 NUM_ACTIONS = 4
-ALLOWED_ACTIONS = [[-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 0.8]]
+ALLOWED_ACTIONS = [[-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]]
 
 
 class DiscreteCarRacing(gym.Wrapper):
