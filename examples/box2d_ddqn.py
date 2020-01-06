@@ -7,7 +7,7 @@ import torch
 from src.algorithms.double_deep_q_learning import DoubleDQNAtariAgent
 from src.models import DDQN
 from src.utils.assessment import AtariEvaluator
-from src.utils.env import DiscreteCarRacing, wrap_deepmind
+from src.utils.env import DiscreteCarRacing, wrap_deepmind, wrap_box2d
 from src.utils.logger import Logger
 from src.utils.replay_memory import ReplayMemory
 
@@ -18,10 +18,10 @@ def _moving_average(interval, window_size):
 
 
 # -------Parameters----------
-CAPACITY = 50_000
+CAPACITY = 5_000
 SKIP_N = 4
 
-frames = 100_000
+frames = 50_000
 TARGET_UPDATE_FREQUENCY = 1_000
 
 EPSILON_METHOD = "linear"
@@ -35,10 +35,13 @@ name = "CarRacing-v0"
 env = gym.make(
     name, verbose=0
 )  # Verbosity off for CarRacing - track generation info can get annoying!
-env = wrap_deepmind(env, episode_life=False)
+
 if "CarRacing" in name:
     # DQN needs discrete inputs
-    env = DiscreteCarRacing(env)
+    env = wrap_box2d(env)
+else:
+    env = wrap_deepmind(env, episode_life=False)
+
 n_actions = env.action_space.n
 
 # -------Models--------------

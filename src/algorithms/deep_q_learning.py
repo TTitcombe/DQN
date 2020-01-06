@@ -118,7 +118,7 @@ class DQNAgent:
                 action, reward, is_done, next_state = self._act(
                     state, frame, is_done, render, clip_rewards, skip_n
                 )
-                self.memory.update(state, action, reward, next_state)
+                self.memory.update(state, action, reward.float(), next_state)
                 state = next_state
 
                 # Update
@@ -131,7 +131,7 @@ class DQNAgent:
                     loss = 0.0
 
                 episode_loss += loss
-                episode_reward += reward
+                episode_reward += reward.item()
                 frame += 1
                 if frame % 10 == 0:
                     pbar.update()
